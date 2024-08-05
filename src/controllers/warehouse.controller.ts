@@ -1,17 +1,21 @@
 import { container} from "tsyringe";
 import { WarehouseService } from "../services/warehouse.service";
 import { Request, Response } from "express";
+import { AppError } from "../helpers/handleError.helper";
 
 export class WarehouseController {
   
     static async findAllWarehouses(_ : Request, res: Response): Promise<void>{
         try {
-            const warehouseService = container.resolve(WarehouseService);
+            const warehouseService: WarehouseService = container.resolve(WarehouseService);
             const warehouses = await warehouseService.findAllWarehouses();
+
+            if(!warehouses.length) res.status(204).json({ message: 'There are no drivers found' });
+            
             res.status(200).json({ message: 'Data succesfully fetched', data: warehouses});
-        } catch (error) {
+        } catch (error:any) {
             console.log(error)
-            res.status(500).json({ message: 'Error in find all warehouses' });
+            res.status(error.statusCode || 500).json({ message: error.message || 'Internal server error'});
         }
     }
 
@@ -24,9 +28,9 @@ export class WarehouseController {
             if(!warehouse) res.status(404).json({ message: `Warehouse with id ${id} not found` });
 
             res.status(200).json({ message: 'Data succesfully fetched', data: warehouse });
-        } catch (error) {
+        } catch (error: any) {
             console.log(error);
-            res.status(500).json({ message: 'Error in find warehouse by id' });
+            res.status(error.statusCode || 500).json({ message: error.message || 'Internal server error'});
         }
     }
 
@@ -34,15 +38,15 @@ export class WarehouseController {
         try {
             const warehouse = req.body;
 
-            if(!warehouse.name || !warehouse.location) res.status(400).json({ message: 'Name and location are required'});
+            if(!warehouse.name || !warehouse.location) throw new AppError(400, 'Name and location are required') 
 
             const warehouseService = container.resolve(WarehouseService);
 
             const newWarehouse = await warehouseService.createWarehouse(warehouse);
             res.status(201).json({ message: 'Warehouse created succesfully', data: newWarehouse });
-        } catch (error) {
+        } catch (error: any) {
             console.log(error);
-            res.status(500).json({ message: 'Error in create warehouse' });
+            res.status(error.statusCode || 500).json({ message: error.message || 'Internal Server Error'});
         }
     }
 
@@ -54,15 +58,28 @@ export class WarehouseController {
             const { id } = req.params;
             const warehouse = req.body;
             
-            const updatedRows = await warehouseService.updateWarehouse(+id, warehouse);
+            await warehouseService.updateWarehouse(+id, warehouse);
 
-            if(!updatedRows) res.status(400).json({ message: 'Couldn update warehouse'});
             const updatedWarehouse = await warehouseService.findWarehouseById(+id);
 
             res.status(200).json({ message: 'Warehouse updated succesfully', data: updatedWarehouse });
-        } catch (error) {
+        } catch (error: any) {
             console.log(error);
-            res.status(500).json({ message: 'Error in update warehouse '});
+            res.status(error.statusCode || 500).json({ message: error.message || 'Internal server error'});
+        }
+    }
+
+    static async deleteWarehouse(req: Request, res: Response): Promise<void>{
+        try {
+            const warehouseService = container.resolve(WarehouseService);
+
+            const { id } = req.params;
+            await warehouseService.deleteWarehouse(+id);
+
+            res.status(200).json({ message: `Warehouse with id ${id} succesfully deleted` });
+        } catch (error: any) {
+            console.log(error);
+            res.status(error.statusCode || 500).json({ message: error.message || 'Internal server error'});
         }
     }
 }

@@ -2,6 +2,7 @@ import { injectable, inject } from "tsyringe";
 import WarehouseRepository from "../repositories/warehouse.repository";
 import { Warehouse } from "../models/warehouse.model";
 import { HostNotFoundError } from "sequelize";
+import { AppError } from "../helpers/handleError.helper";
 
 @injectable()
 export class WarehouseService {
@@ -11,22 +12,24 @@ export class WarehouseService {
         return await this.warehouseRepository.findAll();
     }
 
-    async findWarehouseById(id: number): Promise<any> {
-        const warehouse = await this.warehouseRepository.findById(id);
-        return warehouse;
+    async findWarehouseById(id: number): Promise<Warehouse|null> {
+        return await this.warehouseRepository.findById(id);
     }
 
-    async createWarehouse(warehouse: Partial<Warehouse>){
-        const newWarehouse = this.warehouseRepository.create(warehouse);
-        return newWarehouse;
+    async createWarehouse(warehouse: Partial<Warehouse>): Promise<Warehouse>{
+        return this.warehouseRepository.create(warehouse);
     }
 
-    async updateWarehouse(id: number, warehouse: Partial<Warehouse>){
+    async updateWarehouse(id: number, warehouse: Partial<Warehouse>): Promise<void>{
 
         const warehouseToUpdate = await this.findWarehouseById(id);
-        if(!warehouseToUpdate) throw new Error ('Warehouse not found');
+        if(!warehouseToUpdate) throw new AppError (404, `Warehouse with id ${id} not found`);
 
-        const updatedWarehouse = await this.warehouseRepository.update(id, warehouse);
-        return updatedWarehouse;
+        await this.warehouseRepository.update(id, warehouse);
+    }
+
+    async deleteWarehouse(id: number): Promise<void>{
+        const deletedWarehouse = await this.warehouseRepository.delete(id);
+        if(!deletedWarehouse) throw new AppError (404, `Warehouse with id ${id} not found`);
     }
 }
